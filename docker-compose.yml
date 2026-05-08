@@ -1,0 +1,74 @@
+# ============================================================
+# docker-compose.yml — IPMS Application Stack
+# Services: app (PHP+Apache) + db (MySQL)
+# Rwanda Revenue Authority - Customs Division
+# ============================================================
+# HOW TO RUN:
+#   docker compose up --build
+#   Then open: http://localhost:8080
+# ============================================================
+
+version: '3.9'
+
+services:
+
+  # ── MySQL Database ─────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: ipms_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE}
+      MYSQL_USER:          ${MYSQL_USER}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD}
+    volumes:
+      # Persist database data even when container stops
+      - db_data:/var/lib/mysql
+      # Auto-run SQL on first start
+      - ./ipms_database.sql:/docker-entrypoint-initdb.d/ipms_database.sql:ro
+    ports:
+      - "3307:3306"   # 3307 on host to avoid conflict with local MySQL
+    networks:
+      - ipms_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── PHP + Apache Application ───────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ipms_app
+    restart: unless-stopped
+    environment:
+      # These override the config.php defaults
+      DB_HOST: db               # "db" = the MySQL service name above
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+    ports:
+      - "8080:80"               # Access app at http://localhost:8080
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ipms_network
+    volumes:
+      # Optional: live-reload your PHP files during development
+      - .:/var/www/html/
+
+# ── Persistent Volume for MySQL data ──────────────────────────
+volumes:
+  db_data:
+    driver: local
+
+# ── Internal Network ──────────────────────────────────────────
+networks:
+  ipms_network:
+    driver: bridge

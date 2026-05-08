@@ -1,0 +1,14 @@
+# ============================================================
+# .gitignore — IPMS Version Control
+# Files that should NOT be tracked by Git
+# ============================================================
+
+# Environment secrets - NEVER commit this
+.env
+
+# Docker generated files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

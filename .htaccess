@@ -1,0 +1,14 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Block direct access to includes folder
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^includes/ - [F,L]
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "(config\.php|\.sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
